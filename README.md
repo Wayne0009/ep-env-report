@@ -1,2 +1,40 @@
 # ep-env-report
-环评报告自动化生成项目
+.github/workflows/eai-auto.yml
+name:环评文本自动生成
+on:
+  push:
+    branches: [main]
+jobs:
+  gen_report:
+    runs-on: ubuntu-latest
+    env:
+      DOUBAO_API_KEY: ${{ secrets.DOUBAO_API_KEY }}
+      DOUBAO_ENDPOINT_ID: ${{ secrets.DOUBAO_ENDPOINT_ID }}
+    steps:
+      - name:检出代码
+        uses: actions/checkout@v6
+
+      - name:安装火山SDK
+        run: pip install volcengine-python-sdk
+
+      - name:调用豆包生成环评章节
+        run: |
+          python << 'EOF'
+from volcengine.maas import MaasService
+maas = MaasService('maas-api.ml-platform-cn-beijing.volces.com', 'cn-beijing')
+maas.set_ak("${DOUBAO_API_KEY}")
+with open("project_param.txt","r",encoding="utf-8") as f:
+    content = f.read()
+prompt = """你是环评工程师，根据下面项目信息，编写环评报告中工程分析+废水污染防治章节，正式书面环评语言，内容贴合食品泡菜加工项目，废水重点写高盐废水、硫酸铝混凝+气浮处理工艺。
+项目信息：
+""" + content
+resp = maas.chat(req={
+    "model":"${DOUBAO_ENDPOINT_ID}",
+    "messages":[{"role":"user","content":prompt}]
+})
+result = resp.choice.message.content
+with open("report_section.md","w",encoding="utf-8") as fw:
+    fw.write(result)
+print("✅环评章节生成完成，文件report_section.md")
+print(result)
+EOF
