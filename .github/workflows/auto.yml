@@ -1,0 +1,23 @@
+name:自动生成环评
+on: push
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+      DOUBAO_API_KEY: ${{ secrets.DOUBAO_API_KEY }}
+      DOUBAO_ENDPOINT_ID: ${{ secrets.DOUBAO_ENDPOINT_ID }}
+    steps:
+      - uses: actions/checkout@v6
+      - name:安装SDK
+        run: pip install volcengine-python-sdk
+      - name:调用豆包
+        run: |
+          python << 'EOF'
+from volcengine.maas import MaasService
+maas = MaasService('maas-api.ml-platform-cn-beijing.volces.com','cn-beijing')
+maas.set_ak("${DOUBAO_API_KEY}")
+with open("project_param.txt","r",encoding="utf-8") as f:info=f.read()
+res=maas.chat(req={"model":"${DOUBAO_ENDPOINT_ID}","messages":[{"role":"user","content":"写环评工程分析+废水章节："+info}]})
+open("result.md","w",encoding="utf-8").write(res.choice.message.content)
+print("完成，看仓库里result.md")
+EOF
